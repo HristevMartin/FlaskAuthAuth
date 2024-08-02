@@ -46,7 +46,7 @@ class Login(Resource):
 
 
 class Test(Resource):
-    # @auth.login_required
+    @auth.login_required
     @permission_required(RoleType.new_user)
     def get(self):
         return {"message": "Hello World!"}

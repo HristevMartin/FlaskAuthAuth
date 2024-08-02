@@ -1,9 +1,11 @@
 from flask import Flask
+from flask_cors import CORS
 from flask_restful import Api
-# from flask_cors import CORS
+
 from config import DevApplication
 from db_extensions import mongo
 from resources.routes import routes
+
 
 def create_app(config_class=DevApplication):
     app = Flask(__name__)
@@ -18,10 +20,10 @@ def create_app(config_class=DevApplication):
     # Register API routes
     [api.add_resource(*r) for r in routes]
 
-    # Enable CORS if needed
-    # CORS(app)
+    CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
 
     return app
+
 
 if __name__ == "__main__":
     app = create_app()
