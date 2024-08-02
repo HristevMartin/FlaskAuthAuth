@@ -73,12 +73,10 @@ auth = HTTPTokenAuth(scheme="Bearer")
 
 @auth.verify_token
 def verify_token(token):
-    from extensions import mongo
-    # from db_models.users import User
+    from db_extensions import mongo
 
     user_id, role = AuthManager.decode_token(token)
 
-    # retrieve the token from the database
     # token_entry = Token.query.filter_by(token=token).first()
     # if token_entry is None:
     #     return None
@@ -86,6 +84,12 @@ def verify_token(token):
     # check if the token has expired
     # if token_entry.expiration_time < datetime.utcnow():
     #     return None
-    user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
-    # user = eval(f"{role}.query.filter_by(id={user_id}).first()a")
+
+    try:
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+    except Exception as e:
+        print('Failed to fetch user from MongoDB:', str(e))
+        return None
+
     return user
+#

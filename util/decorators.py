@@ -8,7 +8,7 @@ def permission_required(permission):
         def decorate_func(*args, **kwargs):
             user = auth.current_user()
             if not user['role'] == permission.value:
-                return jsonify({'message': 'You do not have access to this resource'}), 403
+                return {'message': 'You do not have access to this resource'}, 403
             return func(*args,**kwargs)
         return decorate_func
     return wrapper
