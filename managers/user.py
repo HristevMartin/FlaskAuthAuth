@@ -32,7 +32,7 @@ class User:
             'password': hashed_password,
             'createdAt': datetime.now(),
             'isDeleted': False,
-            'role': RoleType.new_user.value
+            'role': [RoleType.new_user.value]
         }
         return payload_dict
 
@@ -53,23 +53,44 @@ class User:
         return {'message': 'Wrong password or user not found'}, 401
 
 
-    def update_user_role(self, user_id, new_role):
-        if new_role not in [role.value for role in RoleType]:
-            return {'error': 'Invalid role specified'}, 400
+    # def update_user_role(self, user_id, new_role):
+    #     if new_role not in [role.value for role in RoleType]:
+    #         return {'error': 'Invalid role specified'}, 400
+    #
+    #
+    #     try:
+    #         oid = ObjectId(user_id)
+    #     except InvalidId:
+    #         print(f"Invalid user ID format: {user_id}")
+    #         return {'error': 'Invalid user ID format'}, 400
+    #
+    #     result = self.users_collection.update_one(
+    #         {"_id": oid},
+    #         {"$set": {"role": new_role}}
+    #     )
+    #
+    #     if result.modified_count == 0:
+    #         return {'error': 'User not found or no update needed'}, 404
+    #
+    #     return {'message': 'User role updated successfully'}, 200
 
-
-        try:
-            oid = ObjectId(user_id)
-        except InvalidId:
-            print(f"Invalid user ID format: {user_id}")
-            return {'error': 'Invalid user ID format'}, 400
-
+    def add_role_to_user(self, user_id, new_role):
+        # Adds a new role to the user if it doesn't already exist
         result = self.users_collection.update_one(
-            {"_id": oid},
-            {"$set": {"role": new_role}}
+            {"_id": ObjectId(user_id)},
+            {"$addToSet": {"role": new_role}}
         )
-
         if result.modified_count == 0:
-            return {'error': 'User not found or no update needed'}, 404
+            return {'message': 'Role already exists or user not found'}, 409
+        return {'message': 'Role added successfully'}, 200
 
-        return {'message': 'User role updated successfully'}, 200
+
+    def remove_role_from_user(self, user_id, role):
+        # Removes a role from the user
+        result = self.users_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$pull": {"roles": role}}
+        )
+        if result.modified_count == 0:
+            return {'message': 'Role not found or user not found'}, 404
+        return {'message': 'Role removed successfully'}, 200

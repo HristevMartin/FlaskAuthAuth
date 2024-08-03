@@ -5,6 +5,9 @@ from bson import ObjectId
 from flask_httpauth import HTTPTokenAuth
 from werkzeug.exceptions import BadRequest
 
+from db_extensions import mongo
+
+
 # from app import db
 # from db_models.token import Token
 
@@ -51,39 +54,15 @@ class AuthManager:
         except jwt.InvalidTokenError:
             return None
 
-    # @staticmethod
-    # def save_token_to_db(token, user, payload):
-    #     new_token = Token(
-    #         token=token,
-    #         user_id=user.id,
-    #         role=user.__class__.__name__,
-    #         expiration_time=payload["exp"]
-    #     )
-    #     db.session.add(new_token)
-    #     db.session.commit()
-    #     try:
-    #         db.session.commit()
-    #     except Exception as e:
-    #         db.session.rollback()
-    #         print('Failed to save token:', str(e))
-
-
 auth = HTTPTokenAuth(scheme="Bearer")
 
 
 @auth.verify_token
 def verify_token(token):
-    from db_extensions import mongo
-
     user_id, role = AuthManager.decode_token(token)
 
-    # token_entry = Token.query.filter_by(token=token).first()
-    # if token_entry is None:
-    #     return None
-
-    # check if the token has expired
-    # if token_entry.expiration_time < datetime.utcnow():
-    #     return None
+    if mongo.db.blacklisted_tokens.find_one({"token": token}):
+        return None
 
     try:
         user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
@@ -92,4 +71,3 @@ def verify_token(token):
         return None
 
     return user
-#

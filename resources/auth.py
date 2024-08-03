@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from bson import ObjectId
 from flask import request
@@ -34,16 +34,35 @@ class Login(Resource):
         return result, status
 
 
+# class UpdateUserRole(Resource):
+#     @auth.login_required
+#     @permission_required(RoleType.admin)
+#     def patch(self, user_id):
+#         new_role = request.json.get('role')
+#         if not new_role:
+#             return {'error': 'Missing role'}, 400
+#
+#         user_manager = User(mongo.db)
+#         return user_manager.update_user_role(user_id, new_role)
+
 class UpdateUserRole(Resource):
     @auth.login_required
     @permission_required(RoleType.admin)
     def patch(self, user_id):
-        new_role = request.json.get('role')
+        new_role = request.json.get('new_role')
+        action = request.json.get('action')
+
         if not new_role:
             return {'error': 'Missing role'}, 400
 
         user_manager = User(mongo.db)
-        return user_manager.update_user_role(user_id, new_role)
+
+        if action == 'add':
+            return user_manager.add_role_to_user(user_id, new_role)
+        elif action == 'remove':
+            return user_manager.remove_role_from_user(user_id, new_role)
+        else:
+            return {'error': 'Invalid action specified'}, 400
 
 
 class InsertAdminUser(Resource):
@@ -63,8 +82,36 @@ class InsertAdminUser(Resource):
         return {'message': 'Admin user created successfully'}, 201
 
 
+class Logout(Resource):
+    @auth.login_required
+    def delete(self):
+        current_user = auth.current_user()
+
+        if not current_user:
+            return {'message': 'Invalid user session'}, 401
+
+        token = request.headers.get('Authorization').split(" ")[1]
+        expires_at = datetime.utcnow() + timedelta(days=1)
+
+        try:
+            mongo.db.blacklisted_tokens.insert_one({
+                "token": token,
+                "expiresAt": expires_at,
+                "blacklistedAt": datetime.utcnow(),
+                "reason": "User logged out",
+                "userId": current_user['_id'],
+                "email": current_user['email'],
+                "role": current_user['role']
+            })
+
+            return {'message': 'Logged out successfully'}, 200
+        except Exception as e:
+            print('Failed to blacklist token:', str(e))
+            return {'message': 'Failed to logout'}, 500
+
+
 class Test(Resource):
     @auth.login_required
-    @permission_required(RoleType.new_user)
+    @permission_required(RoleType.new_user, RoleType.admin)
     def get(self):
         return {"message": "Hello World!"}
