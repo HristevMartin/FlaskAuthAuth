@@ -3,12 +3,13 @@ from flask import jsonify
 from managers.auth import auth
 from werkzeug.exceptions import BadRequest, Forbidden
 
-def permission_required(permission):
+def permission_required(*permissions):
     def wrapper(func):
-        def decorate_func(*args, **kwargs):
+        def decorated_function(*args, **kwargs):
             user = auth.current_user()
-            if not user['role'] == permission.value:
+            # Check if the user's role is among the permitted roles
+            if user['role'] not in [permission.value for permission in permissions]:
                 return {'message': 'You do not have access to this resource'}, 403
-            return func(*args,**kwargs)
-        return decorate_func
+            return func(*args, **kwargs)
+        return decorated_function
     return wrapper
