@@ -17,7 +17,7 @@ def create_app(config_class=DevApplication):
 
     [api.add_resource(*r) for r in routes]
 
-    CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
+    CORS(app, origins=["http://localhost:3000"])
 
     return app
 
