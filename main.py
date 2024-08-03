@@ -11,13 +11,10 @@ def create_app(config_class=DevApplication):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Initialize MongoDB
     mongo.init_app(app)
 
-    # Setup the API using Flask-Restful
     api = Api(app)
 
-    # Register API routes
     [api.add_resource(*r) for r in routes]
 
     CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
