@@ -34,17 +34,6 @@ class Login(Resource):
         return result, status
 
 
-# class UpdateUserRole(Resource):
-#     @auth.login_required
-#     @permission_required(RoleType.admin)
-#     def patch(self, user_id):
-#         new_role = request.json.get('role')
-#         if not new_role:
-#             return {'error': 'Missing role'}, 400
-#
-#         user_manager = User(mongo.db)
-#         return user_manager.update_user_role(user_id, new_role)
-
 class UpdateUserRole(Resource):
     @auth.login_required
     @permission_required(RoleType.admin)
