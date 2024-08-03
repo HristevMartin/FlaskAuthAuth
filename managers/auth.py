@@ -17,7 +17,7 @@ class AuthManager:
     def encode_token(user_id, role):
         payload = {
             "sub": user_id,
-            "exp": datetime.utcnow() + timedelta(days=1),
+            "exp": datetime.utcnow() + timedelta(days=7),
             "role": role
         }
         token = jwt.encode(payload, key='verysecrettoken', algorithm="HS256")

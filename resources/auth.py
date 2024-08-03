@@ -13,7 +13,7 @@ from util.decorators import permission_required
 
 
 class Register(Resource):
-    # @validate_schema(ComplainerRegisterRequestSchema)
+    # @validate_schema()
     def post(self):
         user_table = mongo.db.users
         user_manager = User(mongo.db)
@@ -27,7 +27,7 @@ class Register(Resource):
 
 
 class Login(Resource):
-    # @validate_schema(ComplainerLoginRequestSchema)
+    # @validate_schema()
     def post(self):
         user_manager = User(mongo.db)
         result, status = user_manager.authenticate_user(request)
@@ -36,7 +36,7 @@ class Login(Resource):
 
 class UpdateUserRole(Resource):
     @auth.login_required
-    @permission_required(RoleType.admin)
+    @permission_required(RoleType.ADMIN)
     def patch(self, user_id):
         new_role = request.json.get('new_role')
         action = request.json.get('action')
@@ -64,10 +64,32 @@ class InsertAdminUser(Resource):
             'password': generate_password_hash('root', method='pbkdf2:sha256'),
             'createdAt': datetime.utcnow(),
             'isDeleted': False,
-            'role': RoleType.admin.value
+            'role': RoleType.ADMIN.value
         }
 
         user_table.insert_one(admin_user)
+        return {'message': 'Admin user created successfully'}, 201
+
+    def post(self):
+        data = request.get_json()
+        user_table = mongo.db.users
+
+        existing_user = user_table.find_one({'email': data['email']})
+
+        if existing_user:
+            return {
+                'message': 'An agent with this email already exists'}, 400
+
+        agent_user = {
+            '_id': ObjectId(),
+            'email': data['email'],
+            'password': generate_password_hash(data['password'], method='pbkdf2:sha256'),
+            'createdAt': datetime.utcnow(),
+            'isDeleted': False,
+            'role': RoleType.AGENT.value
+        }
+
+        user_table.insert_one(agent_user)
         return {'message': 'Admin user created successfully'}, 201
 
 
@@ -101,6 +123,6 @@ class Logout(Resource):
 
 class Test(Resource):
     @auth.login_required
-    @permission_required(RoleType.new_user, RoleType.admin)
+    @permission_required(RoleType.NEW_USER, RoleType.ADMIN)
     def get(self):
         return {"message": "Hello World!"}
