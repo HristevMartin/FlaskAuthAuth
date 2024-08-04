@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 
 import jwt
@@ -7,10 +8,7 @@ from werkzeug.exceptions import BadRequest
 
 from db_extensions import mongo
 
-
-# from app import db
-# from db_models.token import Token
-
+jwt_secret_key = os.getenv("SECRET_KEY")
 
 class AuthManager:
     @staticmethod
@@ -18,15 +16,15 @@ class AuthManager:
         payload = {
             "sub": user_id,
             "exp": datetime.utcnow() + timedelta(days=7),
-            "role": role
+            "role": role,
         }
-        token = jwt.encode(payload, key='verysecrettoken', algorithm="HS256")
+        token = jwt.encode(payload, key=jwt_secret_key, algorithm="HS256")
         return token
 
     @staticmethod
     def decode_token(token):
         try:
-            data = jwt.decode(token, key='verysecrettoken', algorithms=["HS256"])
+            data = jwt.decode(token, key=jwt_secret_key, algorithms=["HS256"])
             return data["sub"], data["role"]
 
         except jwt.ExpiredSignatureError:
@@ -35,24 +33,6 @@ class AuthManager:
         except jwt.InvalidTokenError:
             raise BadRequest("Invalid token")
 
-    @staticmethod
-    def encode_password_reset_token(user, expires_sec=1800):
-        payload = {
-            "sub": user.id,
-            "exp": datetime.utcnow() + timedelta(seconds=expires_sec),
-        }
-        token = jwt.encode(payload, key='verysecrettoken', algorithm="HS256")
-        return token
-
-    @staticmethod
-    def decode_password_reset_token(token):
-        try:
-            data = jwt.decode(token, key='verysecrettoken', algorithms=["HS256"])
-            return data["sub"]
-        except jwt.ExpiredSignatureError:
-            return None
-        except jwt.InvalidTokenError:
-            return None
 
 auth = HTTPTokenAuth(scheme="Bearer")
 
@@ -67,7 +47,7 @@ def verify_token(token):
     try:
         user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
     except Exception as e:
-        print('Failed to fetch user from MongoDB:', str(e))
+        print("Failed to fetch user from MongoDB:", str(e))
         return None
 
     return user

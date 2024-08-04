@@ -1,4 +1,11 @@
-from resources.auth import Register, Login, Test, UpdateUserRole, InsertAdminUser, Logout
+from resources.auth import (
+    Register,
+    Login,
+    Test,
+    UpdateUserRole,
+    InsertAdminUser,
+    Logout,
+)
 
 routes = (
     (Register, "/register"),
