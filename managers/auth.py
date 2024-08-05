@@ -7,6 +7,7 @@ from flask_httpauth import HTTPTokenAuth
 from werkzeug.exceptions import BadRequest
 
 from db_extensions import mongo
+from models.user import BlacklistedToken, Users
 
 jwt_secret_key = os.getenv("SECRET_KEY")
 
@@ -41,13 +42,13 @@ auth = HTTPTokenAuth(scheme="Bearer")
 def verify_token(token):
     user_id, role = AuthManager.decode_token(token)
 
-    if mongo.db.blacklisted_tokens.find_one({"token": token}):
+    if BlacklistedToken.objects(token=token).first():
         return None
 
     try:
-        user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+        user = Users.objects(id=ObjectId(user_id)).first()
     except Exception as e:
-        print("Failed to fetch user from MongoDB:", str(e))
+        print(f"Failed to fetch user from MongoDB: {str(e)}")
         return None
 
     return user

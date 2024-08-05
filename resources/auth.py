@@ -1,38 +1,32 @@
 from datetime import datetime, timedelta
 
-from bson import ObjectId
-from flask import request
+from flask import request, jsonify
 from flask_restful import Resource
 from werkzeug.security import generate_password_hash
 
-from db_extensions import mongo
 from managers.auth import auth
 from managers.user import User
 from models.enums import RoleType
+from models.user import Users, BlacklistedToken
 from schemas.requests.user import TravelRegisterRequestSchema, TravelLoginRequestSchema
-from util.decorators import permission_required, validate_schema
+from util.decorators import validate_schema, permission_required
 
 
 class Register(Resource):
     @validate_schema(TravelRegisterRequestSchema)
     def post(self):
-        user_table = mongo.db.users
-        user_manager = User(mongo.db)
-        result = user_manager.check_and_create_user_data(request)
-
-        if isinstance(result, dict):
-            user_table.insert_one(result)
-
-            return {"message": "User created successfully", "role": "user"}, 201
-        else:
+        result = User().check_and_create_user_data(request)
+        if 'message' in result:
             return result
+        else:
+            Users(**result).save()
+            return {"message": "User created successfully", "role": result["role"]}, 201
 
 
 class Login(Resource):
     @validate_schema(TravelLoginRequestSchema)
     def post(self):
-        user_manager = User(mongo.db)
-        result, status = user_manager.authenticate_user(request)
+        result, status = User().authenticate_user(request)
         return result, status
 
 
@@ -46,54 +40,49 @@ class UpdateUserRole(Resource):
         if not new_role:
             return {"error": "Missing role"}, 400
 
-        user_manager = User(mongo.db)
-
         if action == "add":
-            return user_manager.add_role_to_user(user_id, new_role)
+            res = User.add_role_to_user(user_id, new_role)
+            return res
         elif action == "remove":
-            return user_manager.remove_role_from_user(user_id, new_role)
+            res = User.remove_role_from_user(user_id, new_role)
+            return res
         else:
             return {"error": "Invalid action specified"}, 400
 
 
 class InsertAdminUser(Resource):
     def get(self):
-        user_table = mongo.db.users
+        admin_user = Users(
+            email="admin@gmail.com",
+            password=generate_password_hash("root", method="pbkdf2:sha256"),
+            createdAt=datetime.utcnow(),
+            isDeleted=False,
+            role=[RoleType.ADMIN.value]
+        )
 
-        admin_user = {
-            "_id": ObjectId(),
-            "email": "admin@gmail.com",
-            "password": generate_password_hash("root", method="pbkdf2:sha256"),
-            "createdAt": datetime.utcnow(),
-            "isDeleted": False,
-            "role": RoleType.ADMIN.value,
-        }
+        admin_user.save()
 
-        user_table.insert_one(admin_user)
         return {"message": "Admin user created successfully"}, 201
 
     def post(self):
         data = request.get_json()
-        user_table = mongo.db.users
 
-        existing_user = user_table.find_one({"email": data["email"]})
+        existing_user = Users.objects(email=data["email"]).first()
 
         if existing_user:
             return {"message": "An agent with this email already exists"}, 400
 
-        agent_user = {
-            "_id": ObjectId(),
-            "email": data["email"],
-            "password": generate_password_hash(
-                data["password"], method="pbkdf2:sha256"
-            ),
-            "createdAt": datetime.utcnow(),
-            "isDeleted": False,
-            "role": RoleType.AGENT.value,
-        }
+        agent_user = Users(
+            email=data["email"],
+            password=generate_password_hash(data["password"], method="pbkdf2:sha256"),
+            createdAt=datetime.utcnow(),
+            isDeleted=False,
+            role=[RoleType.AGENT.value]
+        )
 
-        user_table.insert_one(agent_user)
-        return {"message": "Admin user created successfully"}, 201
+        agent_user.save()
+
+        return {"message": "Agent user created successfully"}, 201
 
 
 class Logout(Resource):
@@ -108,17 +97,14 @@ class Logout(Resource):
         expires_at = datetime.utcnow() + timedelta(days=1)
 
         try:
-            mongo.db.blacklisted_tokens.insert_one(
-                {
-                    "token": token,
-                    "expiresAt": expires_at,
-                    "blacklistedAt": datetime.utcnow(),
-                    "reason": "User logged out",
-                    "userId": current_user["_id"],
-                    "email": current_user["email"],
-                    "role": current_user["role"],
-                }
-            )
+            BlacklistedToken(
+                token=token,
+                expiresAt=expires_at,
+                reason="User logged out",
+                userId=current_user["id"],
+                email=current_user["email"],
+                role=current_user["role"]
+            ).save()
 
             return {"message": "Logged out successfully"}, 200
         except Exception as e:
