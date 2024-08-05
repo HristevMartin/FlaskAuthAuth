@@ -6,7 +6,6 @@ from bson import ObjectId
 from flask_httpauth import HTTPTokenAuth
 from werkzeug.exceptions import BadRequest
 
-from db_extensions import mongo
 from models.user import BlacklistedToken, Users
 
 jwt_secret_key = os.getenv("SECRET_KEY")
