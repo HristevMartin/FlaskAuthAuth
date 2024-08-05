@@ -12,3 +12,4 @@ class TravelLoginRequestSchema(BaseUser):
 
 class TravelRegisterRequestSchema(BaseUser):
     password2 = fields.String(required=True, validate=validate.Length(min=3, max=255))
+    role = fields.String(validate=validate.OneOf(["user", "admin", "management"]))
